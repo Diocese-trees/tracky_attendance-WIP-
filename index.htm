@@ -1,0 +1,2992 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attendance Tracker Pro v7.0</title>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+    
+    <!-- Material Design Icons -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <!-- Roboto Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#1976D2">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Attendance Tracker Pro">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #fafafa;
+            color: #212121;
+            line-height: 1.5;
+            transition: all 0.3s ease;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+            overflow-x: hidden;
+        }
+        
+        /* Enhanced Mobile Touch Interactions */
+        @media (hover: none) and (pointer: coarse) {
+            .mat-button, .mat-raised-button, .mat-fab, .mat-mini-fab {
+                min-height: 48px;
+                min-width: 48px;
+            }
+            
+            .mat-list-item {
+                min-height: 56px;
+            }
+            
+            .mat-calendar-day {
+                min-height: 64px;
+            }
+            
+            .swipeable {
+                touch-action: pan-y;
+            }
+        }
+        
+        /* Touch Ripple Effect */
+        .ripple {
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .ripple::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+            pointer-events: none;
+        }
+        
+        .ripple:active::before {
+            width: 300px;
+            height: 300px;
+        }
+        
+        /* Swipe Indicators */
+        .swipe-indicator {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+            z-index: 10;
+            font-size: 24px;
+        }
+        
+        .swipe-left {
+            right: 16px;
+            color: var(--success);
+        }
+        
+        .swipe-right {
+            left: 16px;
+            color: var(--error);
+        }
+        
+        .swipeable {
+            position: relative;
+            transition: transform 0.3s ease;
+        }
+        
+        .swipeable.swiping-left {
+            transform: translateX(-60px);
+        }
+        
+        .swipeable.swiping-right {
+            transform: translateX(60px);
+        }
+        
+        .swipeable.swiping-left .swipe-left {
+            opacity: 1;
+        }
+        
+        .swipeable.swiping-right .swipe-right {
+            opacity: 1;
+        }
+        
+        /* Loading States */
+        .loading {
+            position: relative;
+            pointer-events: none;
+            opacity: 0.7;
+        }
+        
+        .loading::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 20px;
+            height: 20px;
+            margin: -10px 0 0 -10px;
+            border: 2px solid transparent;
+            border-top: 2px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Chart Styles */
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin: 24px 0;
+            background: var(--surface);
+            border-radius: 8px;
+            padding: 16px;
+            box-shadow: var(--elevation-1);
+        }
+        
+        .chart-canvas {
+            width: 100% !important;
+            height: 100% !important;
+        }
+        
+        /* GitHub Setup Instructions */
+        .github-setup {
+            background: linear-gradient(135deg, #24292e 0%, #586069 100%);
+            color: white;
+            padding: 24px;
+            border-radius: 12px;
+            margin: 24px 0;
+            box-shadow: var(--elevation-3);
+        }
+        
+        .setup-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 8px;
+            padding: 20px;
+            margin: 16px 0;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .setup-step {
+            display: flex;
+            align-items: flex-start;
+            margin: 12px 0;
+            gap: 12px;
+        }
+        
+        .step-number {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+        
+        .code-block {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 4px;
+            padding: 12px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            margin: 8px 0;
+            overflow-x: auto;
+        }
+        
+        /* Message States */
+        .message {
+            padding: 16px;
+            border-radius: 8px;
+            margin: 16px 0;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            animation: slideIn 0.3s ease;
+        }
+        
+        .message.error {
+            background-color: #FFEBEE;
+            color: #C62828;
+        }
+        
+        .message.success {
+            background-color: #E8F5E8;
+            color: #2E7D32;
+        }
+        
+        .message.warning {
+            background-color: #FFF3E0;
+            color: #F57C00;
+        }
+        
+        .message.info {
+            background-color: #E3F2FD;
+            color: #1976D2;
+        }
+        
+        .dark .message.error {
+            background-color: #B71C1C;
+            color: #EF9A9A;
+        }
+        
+        .dark .message.success {
+            background-color: #1B5E20;
+            color: #A5D6A7;
+        }
+        
+        .dark .message.warning {
+            background-color: #E65100;
+            color: #FFB74D;
+        }
+        
+        .dark .message.info {
+            background-color: #0D47A1;
+            color: #90CAF9;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        /* Sync Status */
+        .sync-status {
+            position: fixed;
+            top: 16px;
+            right: 16px;
+            background-color: var(--surface);
+            border-radius: 20px;
+            padding: 8px 16px;
+            box-shadow: var(--elevation-2);
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            z-index: 999;
+            transition: all 0.3s ease;
+            transform: translateX(100%);
+        }
+        
+        .sync-status.show {
+            transform: translateX(0);
+        }
+        
+        .sync-status.syncing {
+            background-color: var(--warning);
+            color: white;
+        }
+        
+        .sync-status.synced {
+            background-color: var(--success);
+            color: white;
+        }
+        
+        .sync-status.error {
+            background-color: var(--error);
+            color: white;
+        }
+        
+        /* Dark Mode */
+        body.dark {
+            background-color: #000000;
+            color: #ffffff;
+        }
+        
+        /* Material Design Colors */
+        :root {
+            --primary: #1976D2;
+            --primary-dark: #1565C0;
+            --primary-light: #42A5F5;
+            --secondary: #FF4081;
+            --success: #4CAF50;
+            --error: #F44336;
+            --warning: #FF9800;
+            --surface: #ffffff;
+            --surface-variant: #f5f5f5;
+            --on-surface: #212121;
+            --on-surface-variant: #757575;
+            --elevation-1: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
+            --elevation-2: 0 3px 6px rgba(0,0,0,0.16), 0 3px 6px rgba(0,0,0,0.23);
+            --elevation-3: 0 10px 20px rgba(0,0,0,0.19), 0 6px 6px rgba(0,0,0,0.23);
+            --elevation-4: 0 14px 28px rgba(0,0,0,0.25), 0 10px 10px rgba(0,0,0,0.22);
+        }
+        
+        .dark {
+            --surface: #121212;
+            --surface-variant: #1e1e1e;
+            --on-surface: #ffffff;
+            --on-surface-variant: #b3b3b3;
+            --primary: #90CAF9;
+            --primary-dark: #64B5F6;
+            --elevation-1: 0 1px 3px rgba(255,255,255,0.12), 0 1px 2px rgba(255,255,255,0.24);
+            --elevation-2: 0 3px 6px rgba(255,255,255,0.16), 0 3px 6px rgba(255,255,255,0.23);
+            --elevation-3: 0 10px 20px rgba(255,255,255,0.19), 0 6px 6px rgba(255,255,255,0.23);
+            --elevation-4: 0 14px 28px rgba(255,255,255,0.25), 0 10px 10px rgba(255,255,255,0.22);
+        }
+        
+        /* Material Components */
+        .mat-card {
+            background-color: var(--surface);
+            border-radius: 8px;
+            box-shadow: var(--elevation-2);
+            padding: 24px;
+            margin-bottom: 16px;
+            transition: box-shadow 0.3s ease, transform 0.2s ease;
+        }
+        
+        .mat-card:hover {
+            box-shadow: var(--elevation-3);
+        }
+        
+        .mat-elevation-0 { box-shadow: none; }
+        .mat-elevation-1 { box-shadow: var(--elevation-1); }
+        .mat-elevation-2 { box-shadow: var(--elevation-2); }
+        .mat-elevation-3 { box-shadow: var(--elevation-3); }
+        .mat-elevation-4 { box-shadow: var(--elevation-4); }
+        
+        /* Material Buttons */
+        .mat-button {
+            background: none;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-family: 'Roboto', sans-serif;
+            font-weight: 500;
+            font-size: 14px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            color: var(--primary);
+            min-height: 36px;
+        }
+        
+        .mat-button:hover {
+            background-color: rgba(25, 118, 210, 0.08);
+        }
+        
+        .mat-button:active {
+            transform: scale(0.98);
+        }
+        
+        .mat-raised-button {
+            background-color: var(--primary);
+            color: white;
+            box-shadow: var(--elevation-2);
+            padding: 12px 24px;
+            border-radius: 4px;
+            border: none;
+            font-family: 'Roboto', sans-serif;
+            font-weight: 500;
+            font-size: 14px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-height: 36px;
+        }
+        
+        .mat-raised-button:hover {
+            background-color: var(--primary-dark);
+            box-shadow: var(--elevation-3);
+        }
+        
+        .mat-raised-button:active {
+            transform: scale(0.98);
+        }
+        
+        .mat-fab {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background-color: var(--secondary);
+            color: white;
+            border: none;
+            box-shadow: var(--elevation-3);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 1000;
+        }
+        
+        .mat-fab:hover {
+            box-shadow: var(--elevation-4);
+            transform: scale(1.1);
+        }
+        
+        .mat-fab:active {
+            transform: scale(1.05);
+        }
+        
+        .mat-mini-fab {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            box-shadow: var(--elevation-2);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .mat-mini-fab:active {
+            transform: scale(0.95);
+        }
+        
+        /* Material Form Fields */
+        .mat-form-field {
+            position: relative;
+            margin-bottom: 24px;
+        }
+        
+        .mat-input {
+            width: 100%;
+            padding: 16px 12px 8px 12px;
+            border: 1px solid rgba(0,0,0,0.23);
+            border-radius: 4px;
+            font-size: 16px;
+            background-color: transparent;
+            color: var(--on-surface);
+            transition: all 0.3s ease;
+        }
+        
+        .dark .mat-input {
+            border-color: rgba(255,255,255,0.23);
+        }
+        
+        .mat-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            border-width: 2px;
+        }
+        
+        .mat-label {
+            position: absolute;
+            left: 12px;
+            top: 16px;
+            color: var(--on-surface-variant);
+            font-size: 16px;
+            transition: all 0.3s ease;
+            pointer-events: none;
+            background-color: var(--surface);
+            padding: 0 4px;
+        }
+        
+        .mat-input:focus + .mat-label,
+        .mat-input:not(:placeholder-shown) + .mat-label {
+            top: -8px;
+            font-size: 12px;
+            color: var(--primary);
+        }
+        
+        /* Material Chips */
+        .mat-chip {
+            display: inline-flex;
+            align-items: center;
+            padding: 8px 12px;
+            border-radius: 16px;
+            background-color: var(--surface-variant);
+            color: var(--on-surface);
+            font-size: 14px;
+            margin: 4px;
+            transition: all 0.3s ease;
+        }
+        
+        .mat-chip.present {
+            background-color: #E8F5E8;
+            color: #2E7D32;
+        }
+        
+        .mat-chip.absent {
+            background-color: #FFEBEE;
+            color: #C62828;
+        }
+        
+        .dark .mat-chip.present {
+            background-color: #1B5E20;
+            color: #A5D6A7;
+        }
+        
+        .dark .mat-chip.absent {
+            background-color: #B71C1C;
+            color: #EF9A9A;
+        }
+        
+        /* Material Progress */
+        .mat-progress-bar {
+            height: 4px;
+            background-color: rgba(25, 118, 210, 0.2);
+            border-radius: 2px;
+            overflow: hidden;
+            margin: 16px 0;
+        }
+        
+        .mat-progress-bar-fill {
+            height: 100%;
+            background-color: var(--primary);
+            border-radius: 2px;
+            transition: width 0.3s ease;
+        }
+        
+        .mat-progress-bar-fill.success {
+            background-color: var(--success);
+        }
+        
+        .mat-progress-bar-fill.warning {
+            background-color: var(--warning);
+        }
+        
+        .mat-progress-bar-fill.error {
+            background-color: var(--error);
+        }
+        
+        /* Material Tabs */
+        .mat-tab-group {
+            background-color: var(--surface);
+            border-radius: 8px;
+            box-shadow: var(--elevation-2);
+            margin-bottom: 24px;
+            overflow: hidden;
+        }
+        
+        .mat-tab-header {
+            display: flex;
+            background-color: var(--surface);
+            border-bottom: 1px solid rgba(0,0,0,0.12);
+        }
+        
+        .dark .mat-tab-header {
+            border-bottom-color: rgba(255,255,255,0.12);
+        }
+        
+        .mat-tab {
+            flex: 1;
+            padding: 16px 24px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: var(--on-surface-variant);
+            font-weight: 500;
+            text-transform: uppercase;
+            font-size: 14px;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            min-height: 48px;
+        }
+        
+        .mat-tab:hover {
+            background-color: rgba(25, 118, 210, 0.08);
+        }
+        
+        .mat-tab:active {
+            transform: scale(0.98);
+        }
+        
+        .mat-tab.active {
+            color: var(--primary);
+        }
+        
+        .mat-tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background-color: var(--primary);
+        }
+        
+        .mat-tab-content {
+            padding: 24px;
+        }
+        
+        /* Material Lists */
+        .mat-list {
+            padding: 0;
+        }
+        
+        .mat-list-item {
+            display: flex;
+            align-items: center;
+            padding: 16px;
+            border-bottom: 1px solid rgba(0,0,0,0.12);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            min-height: 56px;
+        }
+        
+        .dark .mat-list-item {
+            border-bottom-color: rgba(255,255,255,0.12);
+        }
+        
+        .mat-list-item:hover {
+            background-color: rgba(0,0,0,0.04);
+        }
+        
+        .dark .mat-list-item:hover {
+            background-color: rgba(255,255,255,0.04);
+        }
+        
+        .mat-list-item:active {
+            background-color: rgba(0,0,0,0.08);
+        }
+        
+        .dark .mat-list-item:active {
+            background-color: rgba(255,255,255,0.08);
+        }
+        
+        .mat-list-item:last-child {
+            border-bottom: none;
+        }
+        
+        .mat-list-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: var(--primary);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 16px;
+            font-weight: 500;
+        }
+        
+        .mat-list-content {
+            flex: 1;
+        }
+        
+        .mat-list-title {
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--on-surface);
+            margin-bottom: 4px;
+        }
+        
+        .mat-list-subtitle {
+            font-size: 14px;
+            color: var(--on-surface-variant);
+        }
+        
+        /* Material Calendar */
+        .mat-calendar {
+            background-color: var(--surface);
+            border-radius: 8px;
+            box-shadow: var(--elevation-2);
+            overflow: hidden;
+        }
+        
+        .mat-calendar-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 24px;
+            background-color: var(--primary);
+            color: white;
+        }
+        
+        .mat-calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+        }
+        
+        .mat-calendar-day-header {
+            padding: 16px 8px;
+            text-align: center;
+            font-weight: 500;
+            color: var(--on-surface-variant);
+            font-size: 14px;
+            background-color: var(--surface-variant);
+        }
+        
+        .mat-calendar-day {
+            aspect-ratio: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 8px;
+            border: 1px solid rgba(0,0,0,0.12);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background-color: var(--surface);
+            min-height: 64px;
+        }
+        
+        .dark .mat-calendar-day {
+            border-color: rgba(255,255,255,0.12);
+        }
+        
+        .mat-calendar-day:hover {
+            background-color: rgba(25, 118, 210, 0.08);
+        }
+        
+        .mat-calendar-day:active {
+            background-color: rgba(25, 118, 210, 0.12);
+        }
+        
+        .mat-calendar-day.today {
+            background-color: rgba(25, 118, 210, 0.12);
+            border-color: var(--primary);
+        }
+        
+        .mat-calendar-day.other-month {
+            opacity: 0.5;
+        }
+        
+        .mat-calendar-day-number {
+            font-weight: 500;
+            margin-bottom: 4px;
+        }
+        
+        /* Material Dialog */
+        .mat-dialog-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0,0,0,0.32);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .mat-dialog {
+            background-color: var(--surface);
+            border-radius: 8px;
+            box-shadow: var(--elevation-4);
+            max-width: 500px;
+            width: 100%;
+            max-height: 80vh;
+            overflow: auto;
+            animation: slideUp 0.3s ease;
+        }
+        
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .mat-dialog-title {
+            padding: 24px 24px 0 24px;
+            font-size: 20px;
+            font-weight: 500;
+            color: var(--on-surface);
+        }
+        
+        .mat-dialog-content {
+            padding: 24px;
+        }
+        
+        .mat-dialog-actions {
+            padding: 8px 24px 24px 24px;
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+        
+        /* Material Snackbar */
+        .mat-snackbar {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #323232;
+            color: white;
+            padding: 16px 24px;
+            border-radius: 4px;
+            box-shadow: var(--elevation-3);
+            z-index: 1001;
+            display: none;
+            align-items: center;
+            gap: 16px;
+            max-width: 90vw;
+        }
+        
+        .mat-snackbar.show {
+            display: flex;
+            animation: slideUpSnack 0.3s ease;
+        }
+        
+        @keyframes slideUpSnack {
+            from {
+                transform: translateX(-50%) translateY(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(-50%) translateY(0);
+                opacity: 1;
+            }
+        }
+        
+        /* Material Switch */
+        .mat-switch {
+            position: relative;
+            display: inline-block;
+            width: 36px;
+            height: 20px;
+        }
+        
+        .mat-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        
+        .mat-switch-track {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0,0,0,0.38);
+            border-radius: 10px;
+            transition: 0.3s;
+        }
+        
+        .mat-switch-thumb {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 2px;
+            bottom: 2px;
+            background-color: white;
+            border-radius: 50%;
+            transition: 0.3s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .mat-switch input:checked + .mat-switch-track {
+            background-color: rgba(25, 118, 210, 0.5);
+        }
+        
+        .mat-switch input:checked + .mat-switch-track .mat-switch-thumb {
+            transform: translateX(16px);
+            background-color: var(--primary);
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container {
+                padding: 16px;
+            }
+            
+            .mat-card {
+                padding: 16px;
+                margin-bottom: 12px;
+            }
+            
+            .mat-tab {
+                padding: 12px 8px;
+                font-size: 12px;
+                flex-direction: column;
+                gap: 4px;
+            }
+            
+            .mat-tab span {
+                display: none;
+            }
+            
+            .mat-dialog {
+                margin: 16px;
+                max-height: 90vh;
+            }
+            
+            .mat-calendar-day {
+                padding: 4px;
+                min-height: 56px;
+            }
+            
+            .chart-container {
+                height: 250px;
+                padding: 12px;
+            }
+            
+            .github-setup {
+                padding: 16px;
+            }
+            
+            .setup-card {
+                padding: 16px;
+            }
+        }
+        
+        /* Utility Classes */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+        
+        .flex {
+            display: flex;
+        }
+        
+        .flex-column {
+            flex-direction: column;
+        }
+        
+        .align-center {
+            align-items: center;
+        }
+        
+        .justify-between {
+            justify-content: space-between;
+        }
+        
+        .justify-center {
+            justify-content: center;
+        }
+        
+        .gap-8 {
+            gap: 8px;
+        }
+        
+        .gap-16 {
+            gap: 16px;
+        }
+        
+        .mb-16 {
+            margin-bottom: 16px;
+        }
+        
+        .mb-24 {
+            margin-bottom: 24px;
+        }
+        
+        .text-center {
+            text-align: center;
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.3s ease;
+        }
+        
+        .slide-up {
+            animation: slideUp 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+    <!-- Sync Status Indicator -->
+    <div id="syncStatus" class="sync-status">
+        <i class="material-icons" id="syncIcon">sync</i>
+        <span id="syncText">Syncing...</span>
+    </div>
+
+    <!-- Snackbar -->
+    <div id="snackbar" class="mat-snackbar">
+        <span id="snackbarMessage"></span>
+        <button class="mat-button" onclick="AppManager.hideSnackbar()">DISMISS</button>
+    </div>
+
+    <!-- FAB -->
+    <button id="addFab" class="mat-fab ripple" onclick="SubjectManager.showAddModal()">
+        <i class="material-icons">add</i>
+    </button>
+
+    <div class="container">
+        <!-- App Bar -->
+        <div class="mat-card mat-elevation-2 fade-in" style="margin-bottom: 24px;">
+            <div class="flex align-center justify-between">
+                <div>
+                    <h1 style="font-size: 28px; font-weight: 400; margin-bottom: 8px; color: var(--on-surface);">
+                        <i class="material-icons" style="vertical-align: middle; margin-right: 8px; color: var(--primary);">school</i>
+                        Attendance Tracker Pro v7.0
+                    </h1>
+                    <p style="color: var(--on-surface-variant); font-size: 16px;">GitHub Ready - Android PWA</p>
+                </div>
+                <div class="flex align-center gap-16">
+                    <label class="flex align-center gap-8" style="color: var(--on-surface-variant);">
+                        <i class="material-icons">dark_mode</i>
+                        <div class="mat-switch">
+                            <input type="checkbox" id="darkModeSwitch" onchange="AppManager.toggleDarkMode()">
+                            <span class="mat-switch-track">
+                                <span class="mat-switch-thumb"></span>
+                            </span>
+                        </div>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <!-- GitHub Setup Instructions -->
+        <div class="github-setup">
+            <h2 style="font-size: 24px; font-weight: 500; margin-bottom: 16px; display: flex; align-items: center; gap: 12px;">
+                <i class="material-icons" style="font-size: 32px;">code</i>
+                GitHub Setup for Android APK
+            </h2>
+            
+            <div class="setup-card">
+                <h3 style="font-size: 20px; font-weight: 500; margin-bottom: 16px;">📱 Step-by-Step Android Deployment</h3>
+                
+                <div class="setup-step">
+                    <div class="step-number">1</div>
+                    <div>
+                        <strong>Create GitHub Repository:</strong><br>
+                        Go to github.com → New Repository → Name it "attendance-tracker-app"
+                    </div>
+                </div>
+                
+                <div class="setup-step">
+                    <div class="step-number">2</div>
+                    <div>
+                        <strong>Upload These Files:</strong><br>
+                        Copy this HTML as <code>index.html</code> + create the files below
+                    </div>
+                </div>
+                
+                <div class="setup-step">
+                    <div class="step-number">3</div>
+                    <div>
+                        <strong>Enable GitHub Pages:</strong><br>
+                        Repository Settings → Pages → Source: Deploy from branch → main
+                    </div>
+                </div>
+                
+                <div class="setup-step">
+                    <div class="step-number">4</div>
+                    <div>
+                        <strong>Generate APK:</strong><br>
+                        Visit <code>pwabuilder.com</code> → Enter your GitHub Pages URL → Download APK
+                    </div>
+                </div>
+            </div>
+            
+            <div class="setup-card">
+                <h3 style="font-size: 18px; font-weight: 500; margin-bottom: 12px;">📄 Required Files for GitHub:</h3>
+                
+                <div style="margin: 12px 0;">
+                    <strong>manifest.json</strong>
+                    <div class="code-block">{
+  "name": "Attendance Tracker Pro",
+  "short_name": "AttendanceApp",
+  "description": "Professional attendance tracking app",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1976D2",
+  "theme_color": "#1976D2",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}</div>
+                </div>
+                
+                <div style="margin: 12px 0;">
+                    <strong>sw.js (Service Worker)</strong>
+                    <div class="code-block">const CACHE_NAME = 'attendance-tracker-v7';
+const urlsToCache = [
+  '/',
+  '/index.html',
+  '/manifest.json'
+];
+
+self.addEventListener('install', event => {
+  event.waitUntil(
+    caches.open(CACHE_NAME)
+      .then(cache => cache.addAll(urlsToCache))
+  );
+});
+
+self.addEventListener('fetch', event => {
+  event.respondWith(
+    caches.match(event.request)
+      .then(response => response || fetch(event.request))
+  );
+});</div>
+                </div>
+            </div>
+            
+            <div style="margin-top: 24px; padding: 16px; background: rgba(255,255,255,0.15); border-radius: 8px; text-align: center;">
+                <h4 style="margin-bottom: 8px;">🚀 Your GitHub URL will be:</h4>
+                <code style="font-size: 16px;">https://yourusername.github.io/attendance-tracker-app</code>
+                <p style="margin-top: 8px; font-size: 14px;">Use this URL in PWA Builder to create your Android APK!</p>
+            </div>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <div class="mat-tab-group">
+            <div class="mat-tab-header">
+                <div class="mat-tab active ripple" onclick="NavigationManager.showView('dashboard')" id="dashboardTab">
+                    <i class="material-icons">dashboard</i>
+                    <span>Dashboard</span>
+                </div>
+                <div class="mat-tab ripple" onclick="NavigationManager.showView('analytics')" id="analyticsTab">
+                    <i class="material-icons">analytics</i>
+                    <span>Analytics</span>
+                </div>
+                <div class="mat-tab ripple" onclick="NavigationManager.showView('weekly')" id="weeklyTab">
+                    <i class="material-icons">calendar_view_week</i>
+                    <span>Weekly</span>
+                </div>
+                <div class="mat-tab ripple" onclick="NavigationManager.showView('subjects')" id="subjectsTab">
+                    <i class="material-icons">subject</i>
+                    <span>Subjects</span>
+                </div>
+                <div class="mat-tab ripple" onclick="NavigationManager.showView('settings')" id="settingsTab">
+                    <i class="material-icons">settings</i>
+                    <span>Settings</span>
+                </div>
+            </div>
+            
+            <!-- Dashboard View -->
+            <div id="dashboardView" class="mat-tab-content">
+                <div class="flex align-center justify-between mb-24">
+                    <div>
+                        <h2 style="font-size: 24px; font-weight: 400; margin-bottom: 8px;">Subject Overview</h2>
+                        <p style="color: var(--on-surface-variant);">Monitor your attendance across all subjects</p>
+                    </div>
+                </div>
+                
+                <div id="subjectsList">
+                    <!-- Subjects will be populated here -->
+                </div>
+                
+                <div id="emptyDashboard" class="text-center hidden" style="padding: 48px 0;">
+                    <i class="material-icons" style="font-size: 72px; color: var(--on-surface-variant); margin-bottom: 16px;">school</i>
+                    <h3 style="font-size: 20px; font-weight: 400; margin-bottom: 8px;">No subjects added yet</h3>
+                    <p style="color: var(--on-surface-variant); margin-bottom: 24px;">Start by adding your first subject to track attendance</p>
+                    <button class="mat-raised-button ripple" onclick="SubjectManager.showAddModal()">
+                        Add Your First Subject
+                    </button>
+                </div>
+            </div>
+
+            <!-- Analytics View -->
+            <div id="analyticsView" class="mat-tab-content hidden">
+                <div class="flex align-center justify-between mb-24">
+                    <h2 style="font-size: 24px; font-weight: 400;">Analytics Dashboard</h2>
+                    <div class="flex gap-8">
+                        <button class="mat-button ripple" onclick="AnalyticsManager.exportReport('pdf')">
+                            <i class="material-icons">picture_as_pdf</i>
+                            Export PDF
+                        </button>
+                        <button class="mat-button ripple" onclick="AnalyticsManager.exportReport('csv')">
+                            <i class="material-icons">table_chart</i>
+                            Export CSV
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Analytics Cards -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px; margin-bottom: 24px;">
+                    <div class="mat-card">
+                        <h3 style="font-size: 16px; font-weight: 500; margin-bottom: 16px; color: var(--on-surface-variant);">Overall Attendance</h3>
+                        <div style="font-size: 32px; font-weight: 300; color: var(--primary);" id="overallAttendance">0%</div>
+                        <div style="font-size: 14px; color: var(--on-surface-variant);" id="overallStats">0/0 classes</div>
+                    </div>
+                    <div class="mat-card">
+                        <h3 style="font-size: 16px; font-weight: 500; margin-bottom: 16px; color: var(--on-surface-variant);">This Week</h3>
+                        <div style="font-size: 32px; font-weight: 300; color: var(--success);" id="weeklyAttendance">0%</div>
+                        <div style="font-size: 14px; color: var(--on-surface-variant);" id="weeklyStats">0/0 classes</div>
+                    </div>
+                    <div class="mat-card">
+                        <h3 style="font-size: 16px; font-weight: 500; margin-bottom: 16px; color: var(--on-surface-variant);">Best Subject</h3>
+                        <div style="font-size: 18px; font-weight: 400; color: var(--on-surface);" id="bestSubject">-</div>
+                        <div style="font-size: 14px; color: var(--on-surface-variant);" id="bestSubjectStats">-</div>
+                    </div>
+                    <div class="mat-card">
+                        <h3 style="font-size: 16px; font-weight: 500; margin-bottom: 16px; color: var(--on-surface-variant);">Streak</h3>
+                        <div style="font-size: 32px; font-weight: 300; color: var(--warning);" id="attendanceStreak">0</div>
+                        <div style="font-size: 14px; color: var(--on-surface-variant);">days</div>
+                    </div>
+                </div>
+                
+                <!-- Charts -->
+                <div style="display: grid; gap: 24px;">
+                    <div class="chart-container">
+                        <h3 style="font-size: 18px; font-weight: 500; margin-bottom: 16px;">Attendance Trend</h3>
+                        <canvas id="trendChart" class="chart-canvas"></canvas>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+                        <div class="chart-container">
+                            <h3 style="font-size: 18px; font-weight: 500; margin-bottom: 16px;">Subject Comparison</h3>
+                            <canvas id="subjectChart" class="chart-canvas"></canvas>
+                        </div>
+                        <div class="chart-container">
+                            <h3 style="font-size: 18px; font-weight: 500; margin-bottom: 16px;">Weekly Pattern</h3>
+                            <canvas id="weeklyChart" class="chart-canvas"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Weekly View -->
+            <div id="weeklyView" class="mat-tab-content hidden">
+                <div class="flex align-center justify-between mb-24">
+                    <h2 style="font-size: 24px; font-weight: 400;">Weekly Attendance</h2>
+                    <div class="flex align-center gap-16">
+                        <button class="mat-button ripple" onclick="WeeklyManager.changeWeek(-1)">
+                            <i class="material-icons">chevron_left</i>
+                            Previous
+                        </button>
+                        <span id="currentWeekDisplay" style="font-weight: 500; min-width: 200px; text-align: center;"></span>
+                        <button class="mat-button ripple" onclick="WeeklyManager.changeWeek(1)">
+                            Next
+                            <i class="material-icons">chevron_right</i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="mat-form-field" style="max-width: 300px; margin-bottom: 24px;">
+                    <select id="weeklySubjectSelect" class="mat-input" onchange="WeeklyManager.updateView()" placeholder=" ">
+                        <option value="">All Subjects</option>
+                    </select>
+                    <label class="mat-label">Select Subject</label>
+                </div>
+                
+                <div class="mat-calendar">
+                    <div class="mat-calendar-grid">
+                        <div class="mat-calendar-day-header">Mon</div>
+                        <div class="mat-calendar-day-header">Tue</div>
+                        <div class="mat-calendar-day-header">Wed</div>
+                        <div class="mat-calendar-day-header">Thu</div>
+                        <div class="mat-calendar-day-header">Fri</div>
+                        
+                        <div id="calendarDays">
+                            <!-- Calendar days will be populated here -->
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="flex align-center gap-16" style="margin-top: 16px; font-size: 14px;">
+                    <div class="flex align-center gap-8">
+                        <div class="mat-chip present">Present</div>
+                    </div>
+                    <div class="flex align-center gap-8">
+                        <div class="mat-chip absent">Absent</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Subjects Management View -->
+            <div id="subjectsView" class="mat-tab-content hidden">
+                <div class="flex align-center justify-between mb-24">
+                    <h2 style="font-size: 24px; font-weight: 400;">Manage Subjects</h2>
+                    <button class="mat-raised-button ripple" onclick="SubjectManager.showAddModal()">
+                        <i class="material-icons" style="margin-right: 8px;">add</i>
+                        Add Subject
+                    </button>
+                </div>
+                
+                <div id="subjectsManagementList">
+                    <!-- Subjects management will be populated here -->
+                </div>
+            </div>
+
+            <!-- Settings View -->
+            <div id="settingsView" class="mat-tab-content hidden">
+                <h2 style="font-size: 24px; font-weight: 400; margin-bottom: 24px;">Settings</h2>
+                
+                <div style="display: grid; gap: 24px;">
+                    <!-- Theme Settings -->
+                    <div class="mat-card">
+                        <h3 style="font-size: 18px; font-weight: 500; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+                            <i class="material-icons">palette</i>
+                            Appearance
+                        </h3>
+                        <div class="flex align-center justify-between">
+                            <span>Dark Mode</span>
+                            <div class="mat-switch">
+                                <input type="checkbox" id="darkModeToggle" onchange="AppManager.toggleDarkMode()">
+                                <span class="mat-switch-track">
+                                    <span class="mat-switch-thumb"></span>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Backup Settings -->
+                    <div class="mat-card">
+                        <h3 style="font-size: 18px; font-weight: 500; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+                            <i class="material-icons">backup</i>
+                            Local Backup
+                        </h3>
+                        <div style="display: grid; gap: 16px;">
+                            <div class="flex align-center justify-between">
+                                <span>Auto Backup</span>
+                                <div class="mat-switch">
+                                    <input type="checkbox" id="autoBackupToggle" onchange="DataManager.toggleAutoBackup()" checked>
+                                    <span class="mat-switch-track">
+                                        <span class="mat-switch-thumb"></span>
+                                    </span>
+                                </div>
+                            </div>
+                            <div style="font-size: 14px; color: var(--on-surface-variant);">
+                                Last backup: <span id="lastBackupTime">Never</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Data Management -->
+                    <div class="mat-card">
+                        <h3 style="font-size: 18px; font-weight: 500; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+                            <i class="material-icons">storage</i>
+                            Data Management
+                        </h3>
+                        <div style="display: grid; gap: 16px;">
+                            <div class="flex gap-8">
+                                <button class="mat-raised-button ripple" onclick="DataManager.exportData('json')" style="background-color: var(--success);">
+                                    <i class="material-icons" style="margin-right: 8px;">file_download</i>
+                                    Export JSON
+                                </button>
+                                <button class="mat-raised-button ripple" onclick="DataManager.exportData('csv')" style="background-color: var(--primary);">
+                                    <i class="material-icons" style="margin-right: 8px;">table_chart</i>
+                                    Export CSV
+                                </button>
+                            </div>
+                            <div class="flex gap-8">
+                                <input type="file" id="importFile" accept=".json,.csv" class="mat-input" style="flex: 1;">
+                                <button class="mat-raised-button ripple" onclick="DataManager.importData()">
+                                    <i class="material-icons" style="margin-right: 8px;">file_upload</i>
+                                    Import
+                                </button>
+                            </div>
+                            <button class="mat-raised-button ripple" onclick="DataManager.clearAllData()" style="background-color: var(--error);">
+                                <i class="material-icons" style="margin-right: 8px;">delete_forever</i>
+                                Clear All Data
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- App Info -->
+                    <div class="mat-card">
+                        <h3 style="font-size: 18px; font-weight: 500; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+                            <i class="material-icons">info</i>
+                            App Information
+                        </h3>
+                        <div style="display: grid; gap: 8px; font-size: 14px; color: var(--on-surface-variant);">
+                            <div><strong>Version:</strong> 7.0.0 GitHub Ready</div>
+                            <div><strong>Storage:</strong> <span id="storageUsed">0 KB</span> used</div>
+                            <div><strong>Platform:</strong> Progressive Web App</div>
+                            <div><strong>Offline:</strong> ✅ Fully Supported</div>
+                            <div><strong>Android Ready:</strong> ✅ PWA Compatible</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Subject Dialog -->
+    <div id="subjectModal" class="mat-dialog-overlay hidden">
+        <div class="mat-dialog">
+            <div class="mat-dialog-title" id="modalTitle">Add New Subject</div>
+            <div class="mat-dialog-content">
+                <form id="subjectForm" onsubmit="SubjectManager.saveSubject(event)">
+                    <div class="mat-form-field">
+                        <input type="text" id="subjectName" class="mat-input" required placeholder=" " maxlength="50">
+                        <label class="mat-label">Subject Name</label>
+                        <div class="field-error hidden" id="subjectNameError">
+                            <i class="material-icons">error</i>
+                            <span></span>
+                        </div>
+                    </div>
+                    <div class="mat-form-field">
+                        <input type="text" id="subjectProfessor" class="mat-input" placeholder=" " maxlength="50">
+                        <label class="mat-label">Professor/Teacher</label>
+                    </div>
+                    <div class="mat-form-field">
+                        <input type="number" id="targetAttendance" class="mat-input" min="0" max="100" value="75" placeholder=" ">
+                        <label class="mat-label">Target Attendance (%)</label>
+                        <div class="field-error hidden" id="targetAttendanceError">
+                            <i class="material-icons">error</i>
+                            <span></span>
+                        </div>
+                    </div>
+                    <div class="mat-form-field">
+                        <input type="color" id="subjectColor" class="mat-input" value="#1976D2" placeholder=" ">
+                        <label class="mat-label">Subject Color</label>
+                    </div>
+                </form>
+            </div>
+            <div class="mat-dialog-actions">
+                <button type="button" class="mat-button ripple" onclick="SubjectManager.closeModal()">Cancel</button>
+                <button type="submit" form="subjectForm" class="mat-raised-button ripple">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Attendance Dialog -->
+    <div id="attendanceModal" class="mat-dialog-overlay hidden">
+        <div class="mat-dialog">
+            <div class="mat-dialog-title">Log Attendance</div>
+            <div class="mat-dialog-content" id="attendanceModalContent">
+                <!-- Content will be populated dynamically -->
+            </div>
+            <div class="mat-dialog-actions">
+                <button class="mat-button ripple" onclick="AttendanceManager.closeModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Register Service Worker for PWA
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(registration => {
+                        console.log('SW registered: ', registration);
+                    })
+                    .catch(registrationError => {
+                        console.log('SW registration failed: ', registrationError);
+                    });
+            });
+        }
+
+        // Application State Management
+        class AppState {
+            constructor() {
+                this.data = {
+                    subjects: [],
+                    attendance: {},
+                    settings: {
+                        darkMode: false,
+                        targetAttendance: 75,
+                        autoBackup: true,
+                        version: '7.0.0'
+                    },
+                    metadata: {
+                        created: new Date().toISOString(),
+                        lastModified: new Date().toISOString(),
+                        backupCount: 0
+                    }
+                };
+                this.currentWeekStart = new Date();
+                this.editingSubjectId = null;
+                this.charts = {};
+            }
+
+            // Data validation
+            validateSubject(subject) {
+                const errors = {};
+                
+                if (!subject.name || subject.name.trim().length === 0) {
+                    errors.name = 'Subject name is required';
+                } else if (subject.name.trim().length > 50) {
+                    errors.name = 'Subject name must be less than 50 characters';
+                }
+                
+                if (subject.professor && subject.professor.length > 50) {
+                    errors.professor = 'Professor name must be less than 50 characters';
+                }
+                
+                if (subject.targetAttendance < 0 || subject.targetAttendance > 100) {
+                    errors.targetAttendance = 'Target attendance must be between 0 and 100';
+                }
+                
+                // Check for duplicate names
+                const existingSubject = this.data.subjects.find(s => 
+                    s.name.toLowerCase() === subject.name.toLowerCase() && 
+                    s.id !== subject.id
+                );
+                if (existingSubject) {
+                    errors.name = 'A subject with this name already exists';
+                }
+                
+                return errors;
+            }
+
+            // Safe data operations
+            addSubject(subject) {
+                try {
+                    const errors = this.validateSubject(subject);
+                    if (Object.keys(errors).length > 0) {
+                        throw new Error('Validation failed');
+                    }
+                    
+                    const newSubject = {
+                        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+                        name: subject.name.trim(),
+                        professor: subject.professor ? subject.professor.trim() : '',
+                        targetAttendance: parseInt(subject.targetAttendance) || 75,
+                        color: subject.color || '#1976D2',
+                        createdAt: new Date().toISOString()
+                    };
+                    
+                    this.data.subjects.push(newSubject);
+                    this.updateMetadata();
+                    return { success: true, subject: newSubject };
+                } catch (error) {
+                    return { success: false, error: error.message };
+                }
+            }
+
+            updateSubject(id, updates) {
+                try {
+                    const subject = this.data.subjects.find(s => s.id === id);
+                    if (!subject) {
+                        throw new Error('Subject not found');
+                    }
+                    
+                    const updatedSubject = { ...subject, ...updates };
+                    const errors = this.validateSubject(updatedSubject);
+                    if (Object.keys(errors).length > 0) {
+                        throw new Error('Validation failed');
+                    }
+                    
+                    Object.assign(subject, {
+                        name: updates.name.trim(),
+                        professor: updates.professor ? updates.professor.trim() : '',
+                        targetAttendance: parseInt(updates.targetAttendance) || 75,
+                        color: updates.color || subject.color
+                    });
+                    
+                    this.updateMetadata();
+                    return { success: true, subject };
+                } catch (error) {
+                    return { success: false, error: error.message };
+                }
+            }
+
+            deleteSubject(id) {
+                try {
+                    const index = this.data.subjects.findIndex(s => s.id === id);
+                    if (index === -1) {
+                        throw new Error('Subject not found');
+                    }
+                    
+                    // Remove subject
+                    const deletedSubject = this.data.subjects.splice(index, 1)[0];
+                    
+                    // Remove attendance records
+                    Object.keys(this.data.attendance).forEach(date => {
+                        if (this.data.attendance[date][id]) {
+                            delete this.data.attendance[date][id];
+                        }
+                        // Clean up empty date entries
+                        if (Object.keys(this.data.attendance[date]).length === 0) {
+                            delete this.data.attendance[date];
+                        }
+                    });
+                    
+                    this.updateMetadata();
+                    return { success: true, subject: deletedSubject };
+                } catch (error) {
+                    return { success: false, error: error.message };
+                }
+            }
+
+            logAttendance(subjectId, date, status) {
+                try {
+                    if (!this.data.subjects.find(s => s.id === subjectId)) {
+                        throw new Error('Subject not found');
+                    }
+                    
+                    if (!['present', 'absent'].includes(status)) {
+                        throw new Error('Invalid attendance status');
+                    }
+                    
+                    if (!this.data.attendance[date]) {
+                        this.data.attendance[date] = {};
+                    }
+                    
+                    this.data.attendance[date][subjectId] = status;
+                    this.updateMetadata();
+                    return { success: true };
+                } catch (error) {
+                    return { success: false, error: error.message };
+                }
+            }
+
+            updateMetadata() {
+                this.data.metadata.lastModified = new Date().toISOString();
+            }
+
+            // Statistics calculations
+            getAttendanceStats(subjectId) {
+                let totalClasses = 0;
+                let attendedClasses = 0;
+                
+                Object.keys(this.data.attendance).forEach(date => {
+                    if (this.data.attendance[date][subjectId]) {
+                        totalClasses++;
+                        if (this.data.attendance[date][subjectId] === 'present') {
+                            attendedClasses++;
+                        }
+                    }
+                });
+                
+                return {
+                    total: totalClasses,
+                    attended: attendedClasses,
+                    percentage: totalClasses > 0 ? Math.round((attendedClasses / totalClasses) * 100) : 0
+                };
+            }
+
+            getOverallStats() {
+                let totalClasses = 0;
+                let attendedClasses = 0;
+                
+                Object.keys(this.data.attendance).forEach(date => {
+                    Object.keys(this.data.attendance[date]).forEach(subjectId => {
+                        totalClasses++;
+                        if (this.data.attendance[date][subjectId] === 'present') {
+                            attendedClasses++;
+                        }
+                    });
+                });
+                
+                return {
+                    total: totalClasses,
+                    attended: attendedClasses,
+                    percentage: totalClasses > 0 ? Math.round((attendedClasses / totalClasses) * 100) : 0
+                };
+            }
+
+            getWeeklyStats(weekStart) {
+                const weekEnd = new Date(weekStart);
+                weekEnd.setDate(weekEnd.getDate() + 6);
+                
+                let totalClasses = 0;
+                let attendedClasses = 0;
+                
+                Object.keys(this.data.attendance).forEach(dateStr => {
+                    const date = new Date(dateStr);
+                    if (date >= weekStart && date <= weekEnd) {
+                        Object.keys(this.data.attendance[dateStr]).forEach(subjectId => {
+                            totalClasses++;
+                            if (this.data.attendance[dateStr][subjectId] === 'present') {
+                                attendedClasses++;
+                            }
+                        });
+                    }
+                });
+                
+                return {
+                    total: totalClasses,
+                    attended: attendedClasses,
+                    percentage: totalClasses > 0 ? Math.round((attendedClasses / totalClasses) * 100) : 0
+                };
+            }
+
+            getAttendanceStreak() {
+                const dates = Object.keys(this.data.attendance).sort().reverse();
+                let streak = 0;
+                
+                for (const date of dates) {
+                    const dayAttendance = this.data.attendance[date];
+                    const dayTotal = Object.keys(dayAttendance).length;
+                    const dayPresent = Object.values(dayAttendance).filter(status => status === 'present').length;
+                    
+                    if (dayTotal > 0 && dayPresent === dayTotal) {
+                        streak++;
+                    } else if (dayTotal > 0) {
+                        break;
+                    }
+                }
+                
+                return streak;
+            }
+        }
+
+        // Initialize global app state
+        const appState = new AppState();
+
+        // Application Manager
+        class AppManager {
+            static init() {
+                this.loadData();
+                this.initDarkMode();
+                this.setupEventListeners();
+                this.updateAllViews();
+                this.startAutoBackup();
+                
+                // Set current week to start of current week (Monday)
+                const today = new Date();
+                appState.currentWeekStart = new Date(today);
+                const dayOfWeek = today.getDay();
+                const daysToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+                appState.currentWeekStart.setDate(today.getDate() + daysToMonday);
+            }
+
+            static setupEventListeners() {
+                // Touch events for swipe gestures
+                document.addEventListener('touchstart', this.handleTouchStart.bind(this), { passive: true });
+                document.addEventListener('touchmove', this.handleTouchMove.bind(this), { passive: true });
+                document.addEventListener('touchend', this.handleTouchEnd.bind(this), { passive: true });
+                
+                // Keyboard shortcuts
+                document.addEventListener('keydown', this.handleKeyboard.bind(this));
+                
+                // Online/offline events
+                window.addEventListener('online', () => this.updateSyncStatus('synced', 'Online'));
+                window.addEventListener('offline', () => this.updateSyncStatus('error', 'Offline'));
+            }
+
+            static touchStartX = 0;
+            static touchStartY = 0;
+            static touchElement = null;
+
+            static handleTouchStart(e) {
+                this.touchStartX = e.touches[0].clientX;
+                this.touchStartY = e.touches[0].clientY;
+                this.touchElement = e.target.closest('.swipeable');
+            }
+
+            static handleTouchMove(e) {
+                if (!this.touchElement) return;
+                
+                const touchX = e.touches[0].clientX;
+                const touchY = e.touches[0].clientY;
+                const deltaX = touchX - this.touchStartX;
+                const deltaY = touchY - this.touchStartY;
+                
+                // Only handle horizontal swipes
+                if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 30) {
+                    if (deltaX > 0) {
+                        this.touchElement.classList.add('swiping-right');
+                        this.touchElement.classList.remove('swiping-left');
+                    } else {
+                        this.touchElement.classList.add('swiping-left');
+                        this.touchElement.classList.remove('swiping-right');
+                    }
+                }
+            }
+
+            static handleTouchEnd(e) {
+                if (!this.touchElement) return;
+                
+                const touchX = e.changedTouches[0].clientX;
+                const deltaX = touchX - this.touchStartX;
+                
+                // Handle swipe actions
+                if (Math.abs(deltaX) > 100) {
+                    const subjectId = this.touchElement.dataset.subjectId;
+                    const date = this.touchElement.dataset.date || new Date().toISOString().split('T')[0];
+                    
+                    if (deltaX > 0) {
+                        // Swipe right - mark present
+                        AttendanceManager.logAttendance(subjectId, date, 'present');
+                    } else {
+                        // Swipe left - mark absent
+                        AttendanceManager.logAttendance(subjectId, date, 'absent');
+                    }
+                }
+                
+                // Reset swipe state
+                this.touchElement.classList.remove('swiping-left', 'swiping-right');
+                this.touchElement = null;
+            }
+
+            static handleKeyboard(e) {
+                // Global keyboard shortcuts
+                if (e.ctrlKey || e.metaKey) {
+                    switch (e.key) {
+                        case '1':
+                            e.preventDefault();
+                            NavigationManager.showView('dashboard');
+                            break;
+                        case '2':
+                            e.preventDefault();
+                            NavigationManager.showView('analytics');
+                            break;
+                        case '3':
+                            e.preventDefault();
+                            NavigationManager.showView('weekly');
+                            break;
+                        case '4':
+                            e.preventDefault();
+                            NavigationManager.showView('subjects');
+                            break;
+                        case '5':
+                            e.preventDefault();
+                            NavigationManager.showView('settings');
+                            break;
+                        case 'n':
+                            e.preventDefault();
+                            SubjectManager.showAddModal();
+                            break;
+                        case 's':
+                            e.preventDefault();
+                            DataManager.saveData();
+                            this.showSnackbar('Data saved manually');
+                            break;
+                    }
+                }
+            }
+
+            static loadData() {
+                try {
+                    const savedData = localStorage.getItem('attendanceAppData');
+                    if (savedData) {
+                        const parsed = JSON.parse(savedData);
+                        
+                        // Data migration
+                        if (!parsed.metadata) {
+                            parsed.metadata = {
+                                created: new Date().toISOString(),
+                                lastModified: new Date().toISOString(),
+                                backupCount: 0
+                            };
+                        }
+                        
+                        if (!parsed.settings.version) {
+                            parsed.settings.version = '7.0.0';
+                        }
+                        
+                        appState.data = parsed;
+                        this.updateStorageInfo();
+                    }
+                } catch (error) {
+                    console.error('Error loading data:', error);
+                    this.showSnackbar('Error loading data. Using defaults.', 'error');
+                }
+            }
+
+            static initDarkMode() {
+                if (appState.data.settings.darkMode) {
+                    document.body.classList.add('dark');
+                    document.getElementById('darkModeSwitch').checked = true;
+                    document.getElementById('darkModeToggle').checked = true;
+                }
+            }
+
+            static toggleDarkMode() {
+                const isDark = document.body.classList.toggle('dark');
+                appState.data.settings.darkMode = isDark;
+                document.getElementById('darkModeSwitch').checked = isDark;
+                document.getElementById('darkModeToggle').checked = isDark;
+                DataManager.saveData();
+            }
+
+            static showSnackbar(message, type = 'info') {
+                const snackbar = document.getElementById('snackbar');
+                const messageEl = document.getElementById('snackbarMessage');
+                
+                messageEl.textContent = message;
+                snackbar.className = `mat-snackbar show ${type}`;
+                
+                setTimeout(() => {
+                    this.hideSnackbar();
+                }, 4000);
+            }
+
+            static hideSnackbar() {
+                document.getElementById('snackbar').classList.remove('show');
+            }
+
+            static updateSyncStatus(status, text) {
+                const syncStatus = document.getElementById('syncStatus');
+                const syncIcon = document.getElementById('syncIcon');
+                const syncText = document.getElementById('syncText');
+                
+                syncStatus.className = `sync-status show ${status}`;
+                syncText.textContent = text;
+                
+                switch (status) {
+                    case 'syncing':
+                        syncIcon.textContent = 'sync';
+                        syncIcon.style.animation = 'spin 1s linear infinite';
+                        break;
+                    case 'synced':
+                        syncIcon.textContent = 'check_circle';
+                        syncIcon.style.animation = 'none';
+                        break;
+                    case 'error':
+                        syncIcon.textContent = 'error';
+                        syncIcon.style.animation = 'none';
+                        break;
+                }
+                
+                setTimeout(() => {
+                    syncStatus.classList.remove('show');
+                }, 3000);
+            }
+
+            static updateStorageInfo() {
+                const dataSize = new Blob([JSON.stringify(appState.data)]).size;
+                const sizeKB = Math.round(dataSize / 1024 * 100) / 100;
+                document.getElementById('storageUsed').textContent = `${sizeKB} KB`;
+            }
+
+            static startAutoBackup() {
+                if (appState.data.settings.autoBackup) {
+                    setInterval(() => {
+                        DataManager.createBackup();
+                    }, 5 * 60 * 1000); // Every 5 minutes
+                }
+            }
+
+            static updateAllViews() {
+                DashboardManager.update();
+                AnalyticsManager.update();
+                WeeklyManager.updateView();
+                SubjectManager.updateManagement();
+                this.updateStorageInfo();
+            }
+        }
+
+        // Navigation Manager
+        class NavigationManager {
+            static showView(viewName) {
+                // Hide all views
+                document.querySelectorAll('.mat-tab-content').forEach(view => {
+                    view.classList.add('hidden');
+                });
+                
+                // Remove active class from all tabs
+                document.querySelectorAll('.mat-tab').forEach(tab => {
+                    tab.classList.remove('active');
+                });
+                
+                // Show selected view and activate tab
+                document.getElementById(viewName + 'View').classList.remove('hidden');
+                document.getElementById(viewName + 'Tab').classList.add('active');
+                
+                // Update FAB visibility
+                const fab = document.getElementById('addFab');
+                if (viewName === 'dashboard' || viewName === 'subjects') {
+                    fab.style.display = 'flex';
+                } else {
+                    fab.style.display = 'none';
+                }
+                
+                // Update view-specific content
+                switch (viewName) {
+                    case 'dashboard':
+                        DashboardManager.update();
+                        break;
+                    case 'analytics':
+                        AnalyticsManager.update();
+                        break;
+                    case 'weekly':
+                        WeeklyManager.updateView();
+                        break;
+                    case 'subjects':
+                        SubjectManager.updateManagement();
+                        break;
+                }
+            }
+        }
+
+        // Subject Manager
+        class SubjectManager {
+            static showAddModal() {
+                appState.editingSubjectId = null;
+                document.getElementById('modalTitle').textContent = 'Add New Subject';
+                document.getElementById('subjectName').value = '';
+                document.getElementById('subjectProfessor').value = '';
+                document.getElementById('targetAttendance').value = '75';
+                document.getElementById('subjectColor').value = '#1976D2';
+                this.clearErrors();
+                document.getElementById('subjectModal').classList.remove('hidden');
+            }
+
+            static editSubject(subjectId) {
+                const subject = appState.data.subjects.find(s => s.id === subjectId);
+                if (subject) {
+                    appState.editingSubjectId = subjectId;
+                    document.getElementById('modalTitle').textContent = 'Edit Subject';
+                    document.getElementById('subjectName').value = subject.name;
+                    document.getElementById('subjectProfessor').value = subject.professor || '';
+                    document.getElementById('targetAttendance').value = subject.targetAttendance || 75;
+                    document.getElementById('subjectColor').value = subject.color || '#1976D2';
+                    this.clearErrors();
+                    document.getElementById('subjectModal').classList.remove('hidden');
+                }
+            }
+
+            static closeModal() {
+                document.getElementById('subjectModal').classList.add('hidden');
+                appState.editingSubjectId = null;
+                this.clearErrors();
+            }
+
+            static saveSubject(event) {
+                event.preventDefault();
+                
+                const name = document.getElementById('subjectName').value;
+                const professor = document.getElementById('subjectProfessor').value;
+                const targetAttendance = document.getElementById('targetAttendance').value;
+                const color = document.getElementById('subjectColor').value;
+                
+                const subjectData = { name, professor, targetAttendance, color };
+                
+                let result;
+                if (appState.editingSubjectId) {
+                    result = appState.updateSubject(appState.editingSubjectId, subjectData);
+                } else {
+                    result = appState.addSubject(subjectData);
+                }
+                
+                if (result.success) {
+                    DataManager.saveData();
+                    AppManager.updateAllViews();
+                    this.closeModal();
+                    AppManager.showSnackbar(
+                        appState.editingSubjectId ? 'Subject updated successfully!' : 'Subject added successfully!',
+                        'success'
+                    );
+                } else {
+                    this.showErrors({ name: result.error });
+                }
+            }
+
+            static deleteSubject(subjectId) {
+                const subject = appState.data.subjects.find(s => s.id === subjectId);
+                if (subject && confirm(`Delete "${subject.name}"? This will also delete all attendance records for this subject.`)) {
+                    const result = appState.deleteSubject(subjectId);
+                    
+                    if (result.success) {
+                        DataManager.saveData();
+                        AppManager.updateAllViews();
+                        AppManager.showSnackbar('Subject deleted successfully!', 'success');
+                    } else {
+                        AppManager.showSnackbar('Error deleting subject: ' + result.error, 'error');
+                    }
+                }
+            }
+
+            static showErrors(errors) {
+                this.clearErrors();
+                
+                Object.keys(errors).forEach(field => {
+                    const errorEl = document.getElementById(field + 'Error');
+                    const fieldEl = document.getElementById(field);
+                    
+                    if (errorEl && fieldEl) {
+                        errorEl.querySelector('span').textContent = errors[field];
+                        errorEl.classList.remove('hidden');
+                        fieldEl.parentElement.classList.add('error');
+                    }
+                });
+            }
+
+            static clearErrors() {
+                document.querySelectorAll('.field-error').forEach(el => el.classList.add('hidden'));
+                document.querySelectorAll('.mat-form-field').forEach(el => el.classList.remove('error'));
+            }
+
+            static updateManagement() {
+                const container = document.getElementById('subjectsManagementList');
+                
+                if (appState.data.subjects.length === 0) {
+                    container.innerHTML = `
+                        <div class="text-center" style="padding: 48px 0;">
+                            <i class="material-icons" style="font-size: 72px; color: var(--on-surface-variant); margin-bottom: 16px;">school</i>
+                            <h3 style="font-size: 20px; font-weight: 400; margin-bottom: 8px;">No subjects added yet</h3>
+                            <p style="color: var(--on-surface-variant); margin-bottom: 24px;">Add your first subject to get started</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                container.innerHTML = `
+                    <div class="mat-list">
+                        ${appState.data.subjects.map(subject => {
+                            const stats = appState.getAttendanceStats(subject.id);
+                            
+                            return `
+                                <div class="mat-list-item swipeable" data-subject-id="${subject.id}">
+                                    <div class="swipe-indicator swipe-left">
+                                        <i class="material-icons">check</i>
+                                    </div>
+                                    <div class="swipe-indicator swipe-right">
+                                        <i class="material-icons">close</i>
+                                    </div>
+                                    <div class="mat-list-avatar" style="background-color: ${subject.color};">
+                                        ${subject.name.charAt(0).toUpperCase()}
+                                    </div>
+                                    <div class="mat-list-content">
+                                        <div class="mat-list-title">${subject.name}</div>
+                                        <div class="mat-list-subtitle">
+                                            ${subject.professor ? `Prof. ${subject.professor} • ` : ''}
+                                            Target: ${subject.targetAttendance || 75}% • 
+                                            ${stats.attended}/${stats.total} classes (${stats.percentage}%)
+                                        </div>
+                                    </div>
+                                    <div class="flex gap-8">
+                                        <button class="mat-button ripple" onclick="SubjectManager.editSubject('${subject.id}')">
+                                            <i class="material-icons">edit</i>
+                                        </button>
+                                        <button class="mat-button ripple" onclick="SubjectManager.deleteSubject('${subject.id}')" style="color: var(--error);">
+                                            <i class="material-icons">delete</i>
+                                        </button>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                `;
+            }
+        }
+
+        // Dashboard Manager
+        class DashboardManager {
+            static update() {
+                const subjectsList = document.getElementById('subjectsList');
+                const emptyDashboard = document.getElementById('emptyDashboard');
+                
+                if (appState.data.subjects.length === 0) {
+                    subjectsList.style.display = 'none';
+                    emptyDashboard.classList.remove('hidden');
+                    return;
+                }
+                
+                subjectsList.style.display = 'block';
+                emptyDashboard.classList.add('hidden');
+                
+                subjectsList.innerHTML = appState.data.subjects.map(subject => {
+                    const stats = appState.getAttendanceStats(subject.id);
+                    const percentage = stats.percentage;
+                    const target = subject.targetAttendance || 75;
+                    
+                    let statusColor = 'var(--on-surface-variant)';
+                    let statusText = 'No data';
+                    let progressClass = '';
+                    
+                    if (stats.total > 0) {
+                        if (percentage >= target) {
+                            statusColor = 'var(--success)';
+                            statusText = 'On track';
+                            progressClass = 'success';
+                        } else {
+                            statusColor = 'var(--error)';
+                            statusText = 'Below target';
+                            progressClass = 'error';
+                        }
+                    }
+                    
+                    return `
+                        <div class="mat-card swipeable fade-in" data-subject-id="${subject.id}">
+                            <div class="swipe-indicator swipe-left">
+                                <i class="material-icons">check</i>
+                            </div>
+                            <div class="swipe-indicator swipe-right">
+                                <i class="material-icons">close</i>
+                            </div>
+                            <div class="flex justify-between align-center mb-16">
+                                <div class="mat-list-avatar" style="margin-right: 16px; background-color: ${subject.color};">
+                                    ${subject.name.charAt(0).toUpperCase()}
+                                </div>
+                                <div style="flex: 1;">
+                                    <div class="mat-list-title">${subject.name}</div>
+                                    ${subject.professor ? `<div class="mat-list-subtitle">Prof. ${subject.professor}</div>` : ''}
+                                </div>
+                                <div class="flex gap-8">
+                                    <button class="mat-mini-fab ripple" onclick="AttendanceManager.showModal('${subject.id}')" title="Log Attendance">
+                                        <i class="material-icons">add</i>
+                                    </button>
+                                    <button class="mat-button ripple" onclick="SubjectManager.editSubject('${subject.id}')">
+                                        <i class="material-icons">edit</i>
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="flex align-center justify-between mb-16">
+                                <div style="font-size: 32px; font-weight: 300; color: ${statusColor};">
+                                    ${percentage}%
+                                </div>
+                                <div style="text-align: right;">
+                                    <div style="font-size: 14px; color: var(--on-surface-variant);">
+                                        ${stats.attended}/${stats.total} classes
+                                    </div>
+                                    <div style="font-size: 12px; color: ${statusColor}; font-weight: 500;">
+                                        ${statusText}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="mat-progress-bar">
+                                <div class="mat-progress-bar-fill ${progressClass}" style="width: ${Math.min(percentage, 100)}%"></div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+        }
+
+        // Analytics Manager
+        class AnalyticsManager {
+            static update() {
+                this.updateSummaryCards();
+                this.updateCharts();
+            }
+
+            static updateSummaryCards() {
+                // Overall attendance
+                const overallStats = appState.getOverallStats();
+                document.getElementById('overallAttendance').textContent = `${overallStats.percentage}%`;
+                document.getElementById('overallStats').textContent = `${overallStats.attended}/${overallStats.total} classes`;
+                
+                // Weekly attendance
+                const weeklyStats = appState.getWeeklyStats(appState.currentWeekStart);
+                document.getElementById('weeklyAttendance').textContent = `${weeklyStats.percentage}%`;
+                document.getElementById('weeklyStats').textContent = `${weeklyStats.attended}/${weeklyStats.total} classes`;
+                
+                // Best subject
+                let bestSubject = null;
+                let bestPercentage = -1;
+                
+                appState.data.subjects.forEach(subject => {
+                    const stats = appState.getAttendanceStats(subject.id);
+                    if (stats.total > 0 && stats.percentage > bestPercentage) {
+                        bestPercentage = stats.percentage;
+                        bestSubject = subject;
+                    }
+                });
+                
+                if (bestSubject) {
+                    document.getElementById('bestSubject').textContent = bestSubject.name;
+                    document.getElementById('bestSubjectStats').textContent = `${bestPercentage}% attendance`;
+                } else {
+                    document.getElementById('bestSubject').textContent = '-';
+                    document.getElementById('bestSubjectStats').textContent = '-';
+                }
+                
+                // Attendance streak
+                const streak = appState.getAttendanceStreak();
+                document.getElementById('attendanceStreak').textContent = streak.toString();
+            }
+
+            static updateCharts() {
+                this.createTrendChart();
+                this.createSubjectChart();
+                this.createWeeklyChart();
+            }
+
+            static createTrendChart() {
+                const ctx = document.getElementById('trendChart');
+                if (!ctx) return;
+                
+                if (appState.charts.trend) {
+                    appState.charts.trend.destroy();
+                }
+                
+                // Get last 30 days of data
+                const dates = [];
+                const attendanceData = [];
+                
+                for (let i = 29; i >= 0; i--) {
+                    const date = new Date();
+                    date.setDate(date.getDate() - i);
+                    const dateStr = date.toISOString().split('T')[0];
+                    
+                    dates.push(date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+                    
+                    const dayAttendance = appState.data.attendance[dateStr];
+                    if (dayAttendance) {
+                        const total = Object.keys(dayAttendance).length;
+                        const present = Object.values(dayAttendance).filter(status => status === 'present').length;
+                        attendanceData.push(total > 0 ? Math.round((present / total) * 100) : null);
+                    } else {
+                        attendanceData.push(null);
+                    }
+                }
+                
+                appState.charts.trend = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: dates,
+                        datasets: [{
+                            label: 'Daily Attendance %',
+                            data: attendanceData,
+                            borderColor: '#1976D2',
+                            backgroundColor: 'rgba(25, 118, 210, 0.1)',
+                            tension: 0.4,
+                            spanGaps: true
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                max: 100,
+                                ticks: {
+                                    callback: function(value) {
+                                        return value + '%';
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            static createSubjectChart() {
+                const ctx = document.getElementById('subjectChart');
+                if (!ctx) return;
+                
+                if (appState.charts.subject) {
+                    appState.charts.subject.destroy();
+                }
+                
+                const subjects = appState.data.subjects.map(subject => {
+                    const stats = appState.getAttendanceStats(subject.id);
+                    return {
+                        name: subject.name,
+                        percentage: stats.percentage,
+                        color: subject.color
+                    };
+                });
+                
+                if (subjects.length === 0) return;
+                
+                appState.charts.subject = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: subjects.map(s => s.name),
+                        datasets: [{
+                            data: subjects.map(s => s.percentage),
+                            backgroundColor: subjects.map(s => s.color),
+                            borderWidth: 2,
+                            borderColor: '#ffffff'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom'
+                            }
+                        }
+                    }
+                });
+            }
+
+            static createWeeklyChart() {
+                const ctx = document.getElementById('weeklyChart');
+                if (!ctx) return;
+                
+                if (appState.charts.weekly) {
+                    appState.charts.weekly.destroy();
+                }
+                
+                const weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+                const weeklyData = weekdays.map((day, index) => {
+                    let totalClasses = 0;
+                    let attendedClasses = 0;
+                    
+                    Object.keys(appState.data.attendance).forEach(dateStr => {
+                        const date = new Date(dateStr);
+                        const dayOfWeek = date.getDay();
+                        const mondayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+                        
+                        if (mondayIndex === index) {
+                            const dayAttendance = appState.data.attendance[dateStr];
+                            Object.keys(dayAttendance).forEach(subjectId => {
+                                totalClasses++;
+                                if (dayAttendance[subjectId] === 'present') {
+                                    attendedClasses++;
+                                }
+                            });
+                        }
+                    });
+                    
+                    return totalClasses > 0 ? Math.round((attendedClasses / totalClasses) * 100) : 0;
+                });
+                
+                appState.charts.weekly = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: weekdays,
+                        datasets: [{
+                            label: 'Attendance %',
+                            data: weeklyData,
+                            backgroundColor: '#4CAF50',
+                            borderRadius: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                max: 100,
+                                ticks: {
+                                    callback: function(value) {
+                                        return value + '%';
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            static exportReport(format) {
+                AppManager.updateSyncStatus('syncing', 'Generating report...');
+                
+                setTimeout(() => {
+                    if (format === 'pdf') {
+                        this.exportPDF();
+                    } else if (format === 'csv') {
+                        this.exportCSV();
+                    }
+                    AppManager.updateSyncStatus('synced', 'Report generated');
+                }, 1000);
+            }
+
+            static exportPDF() {
+                // Create a simple HTML report for PDF generation
+                const reportContent = this.generateReportHTML();
+                const printWindow = window.open('', '_blank');
+                printWindow.document.write(reportContent);
+                printWindow.document.close();
+                printWindow.print();
+            }
+
+            static exportCSV() {
+                const csvContent = this.generateCSVReport();
+                const blob = new Blob([csvContent], { type: 'text/csv' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = `attendance-report-${new Date().toISOString().split('T')[0]}.csv`;
+                link.click();
+            }
+
+            static generateReportHTML() {
+                const overallStats = appState.getOverallStats();
+                const subjects = appState.data.subjects.map(subject => ({
+                    ...subject,
+                    stats: appState.getAttendanceStats(subject.id)
+                }));
+
+                return `
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <title>Attendance Report</title>
+                        <style>
+                            body { font-family: Arial, sans-serif; margin: 20px; }
+                            .header { text-align: center; margin-bottom: 30px; }
+                            .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px; }
+                            .stat-card { border: 1px solid #ddd; padding: 15px; border-radius: 8px; }
+                            table { width: 100%; border-collapse: collapse; }
+                            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+                            th { background-color: #f5f5f5; }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="header">
+                            <h1>Attendance Report v7.0</h1>
+                            <p>Generated on ${new Date().toLocaleDateString()}</p>
+                        </div>
+                        
+                        <div class="stats">
+                            <div class="stat-card">
+                                <h3>Overall Attendance</h3>
+                                <p>${overallStats.percentage}% (${overallStats.attended}/${overallStats.total})</p>
+                            </div>
+                        </div>
+                        
+                        <h2>Subject Details</h2>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Subject</th>
+                                    <th>Professor</th>
+                                    <th>Target</th>
+                                    <th>Attended</th>
+                                    <th>Total</th>
+                                    <th>Percentage</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${subjects.map(subject => `
+                                    <tr>
+                                        <td>${subject.name}</td>
+                                        <td>${subject.professor || '-'}</td>
+                                        <td>${subject.targetAttendance}%</td>
+                                        <td>${subject.stats.attended}</td>
+                                        <td>${subject.stats.total}</td>
+                                        <td>${subject.stats.percentage}%</td>
+                                        <td>${subject.stats.percentage >= subject.targetAttendance ? 'On Track' : 'Below Target'}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </body>
+                    </html>
+                `;
+            }
+
+            static generateCSVReport() {
+                const headers = ['Date', 'Subject', 'Status'];
+                const rows = [headers.join(',')];
+                
+                Object.keys(appState.data.attendance).sort().forEach(date => {
+                    const dayAttendance = appState.data.attendance[date];
+                    Object.keys(dayAttendance).forEach(subjectId => {
+                        const subject = appState.data.subjects.find(s => s.id === subjectId);
+                        if (subject) {
+                            rows.push([
+                                date,
+                                `"${subject.name}"`,
+                                dayAttendance[subjectId]
+                            ].join(','));
+                        }
+                    });
+                });
+                
+                return rows.join('\n');
+            }
+        }
+
+        // Weekly Manager
+        class WeeklyManager {
+            static updateView() {
+                this.updateWeekDisplay();
+                this.updateSubjectSelect();
+                this.generateCalendar();
+            }
+
+            static updateWeekDisplay() {
+                const endDate = new Date(appState.currentWeekStart);
+                endDate.setDate(endDate.getDate() + 6);
+                
+                document.getElementById('currentWeekDisplay').textContent = 
+                    `${appState.currentWeekStart.toLocaleDateString()} - ${endDate.toLocaleDateString()}`;
+            }
+
+            static updateSubjectSelect() {
+                const select = document.getElementById('weeklySubjectSelect');
+                select.innerHTML = '<option value="">All Subjects</option>';
+                
+                appState.data.subjects.forEach(subject => {
+                    select.innerHTML += `<option value="${subject.id}">${subject.name}</option>`;
+                });
+            }
+
+            static changeWeek(direction) {
+                appState.currentWeekStart.setDate(appState.currentWeekStart.getDate() + (direction * 7));
+                this.updateView();
+            }
+
+            static generateCalendar() {
+                const calendarDays = document.getElementById('calendarDays');
+                const selectedSubject = document.getElementById('weeklySubjectSelect').value;
+                
+                calendarDays.innerHTML = '';
+                
+                // Generate workdays only (Monday to Friday) for current week
+                const startDate = new Date(appState.currentWeekStart);
+                const monday = new Date(startDate);
+                monday.setDate(startDate.getDate() - startDate.getDay() + 1);
+                
+                // Generate 5 workdays (Monday to Friday)
+                for (let i = 0; i < 5; i++) {
+                    const date = new Date(monday);
+                    date.setDate(monday.getDate() + i);
+                    const dateStr = date.toISOString().split('T')[0];
+                    
+                    const isToday = dateStr === new Date().toISOString().split('T')[0];
+                    
+                    const dayDiv = document.createElement('div');
+                    dayDiv.className = `mat-calendar-day ${isToday ? 'today' : ''} swipeable`;
+                    dayDiv.dataset.date = dateStr;
+                    dayDiv.dataset.subjectId = selectedSubject;
+                    
+                    let dayContent = `
+                        <div class="swipe-indicator swipe-left">
+                            <i class="material-icons">check</i>
+                        </div>
+                        <div class="swipe-indicator swipe-right">
+                            <i class="material-icons">close</i>
+                        </div>
+                        <div class="mat-calendar-day-number">${date.getDate()}</div>
+                        <div style="font-size: 12px; color: var(--on-surface-variant); margin-bottom: 8px;">
+                            ${date.toLocaleDateString('en-US', { month: 'short' })}
+                        </div>
+                    `;
+                    
+                    // Add attendance information
+                    if (appState.data.attendance[dateStr]) {
+                        const dayAttendance = appState.data.attendance[dateStr];
+                        let attendanceInfo = '';
+                        
+                        if (selectedSubject) {
+                            // Show only selected subject
+                            if (dayAttendance[selectedSubject]) {
+                                const status = dayAttendance[selectedSubject];
+                                attendanceInfo += `
+                                    <div class="mat-chip ${status}" style="font-size: 10px; padding: 4px 8px;">
+                                        ${status === 'present' ? 'Present' : 'Absent'}
+                                    </div>
+                                `;
+                            }
+                        } else {
+                            // Show all subjects with status
+                            let presentCount = 0;
+                            let totalCount = 0;
+                            
+                            appState.data.subjects.forEach(subject => {
+                                if (dayAttendance[subject.id]) {
+                                    totalCount++;
+                                    if (dayAttendance[subject.id] === 'present') {
+                                        presentCount++;
+                                    }
+                                }
+                            });
+                            
+                            if (totalCount > 0) {
+                                const chipClass = presentCount === totalCount ? 'present' : 
+                                                presentCount > 0 ? '' : 'absent';
+                                attendanceInfo += `
+                                    <div class="mat-chip ${chipClass}" style="font-size: 10px; padding: 4px 8px;">
+                                        ${presentCount}/${totalCount}
+                                    </div>
+                                `;
+                            }
+                        }
+                        
+                        dayContent += attendanceInfo;
+                    } else {
+                        dayContent += '<div style="font-size: 10px; color: var(--on-surface-variant);">No classes</div>';
+                    }
+                    
+                    dayDiv.innerHTML = dayContent;
+                    dayDiv.onclick = () => AttendanceManager.showModal(selectedSubject, dateStr);
+                    
+                    calendarDays.appendChild(dayDiv);
+                }
+            }
+        }
+
+        // Attendance Manager
+        class AttendanceManager {
+            static showModal(subjectId = '', date = '') {
+                const modal = document.getElementById('attendanceModal');
+                const content = document.getElementById('attendanceModalContent');
+                
+                const targetDate = date || new Date().toISOString().split('T')[0];
+                const displayDate = new Date(targetDate).toLocaleDateString();
+                
+                let modalContent = `<p style="color: var(--on-surface-variant); margin-bottom: 24px;">Date: ${displayDate}</p>`;
+                
+                if (subjectId) {
+                    // Single subject
+                    const subject = appState.data.subjects.find(s => s.id === subjectId);
+                    if (subject) {
+                        const currentStatus = appState.data.attendance[targetDate] && appState.data.attendance[targetDate][subjectId];
+                        
+                        modalContent += `
+                            <div style="margin-bottom: 24px;">
+                                <h4 style="font-weight: 500; margin-bottom: 16px;">${subject.name}</h4>
+                                <div class="flex gap-16">
+                                    <button onclick="AttendanceManager.logAttendance('${subjectId}', '${targetDate}', 'present')" 
+                                            class="mat-raised-button ripple ${currentStatus === 'present' ? '' : 'mat-button'}" 
+                                            style="flex: 1; ${currentStatus === 'present' ? 'background-color: var(--success);' : ''}">
+                                        <i class="material-icons" style="margin-right: 8px;">check</i>
+                                        Present
+                                    </button>
+                                    <button onclick="AttendanceManager.logAttendance('${subjectId}', '${targetDate}', 'absent')" 
+                                            class="mat-raised-button ripple ${currentStatus === 'absent' ? '' : 'mat-button'}" 
+                                            style="flex: 1; ${currentStatus === 'absent' ? 'background-color: var(--error);' : ''}">
+                                        <i class="material-icons" style="margin-right: 8px;">close</i>
+                                        Absent
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                    }
+                } else {
+                    // All subjects
+                    modalContent += '<div style="display: grid; gap: 16px;">';
+                    appState.data.subjects.forEach(subject => {
+                        const currentStatus = appState.data.attendance[targetDate] && appState.data.attendance[targetDate][subject.id];
+                        
+                        modalContent += `
+                            <div class="mat-card mat-elevation-1 swipeable" style="padding: 16px;" data-subject-id="${subject.id}" data-date="${targetDate}">
+                                <div class="swipe-indicator swipe-left">
+                                    <i class="material-icons">check</i>
+                                </div>
+                                <div class="swipe-indicator swipe-right">
+                                    <i class="material-icons">close</i>
+                                </div>
+                                <h4 style="font-weight: 500; margin-bottom: 12px;">${subject.name}</h4>
+                                <div class="flex gap-8">
+                                    <button onclick="AttendanceManager.logAttendance('${subject.id}', '${targetDate}', 'present')" 
+                                            class="mat-button ripple ${currentStatus === 'present' ? 'mat-raised-button' : ''}" 
+                                            style="flex: 1; ${currentStatus === 'present' ? 'background-color: var(--success); color: white;' : ''}">
+                                        <i class="material-icons" style="margin-right: 4px;">check</i>
+                                        Present
+                                    </button>
+                                    <button onclick="AttendanceManager.logAttendance('${subject.id}', '${targetDate}', 'absent')" 
+                                            class="mat-button ripple ${currentStatus === 'absent' ? 'mat-raised-button' : ''}" 
+                                            style="flex: 1; ${currentStatus === 'absent' ? 'background-color: var(--error); color: white;' : ''}">
+                                        <i class="material-icons" style="margin-right: 4px;">close</i>
+                                        Absent
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    modalContent += '</div>';
+                }
+                
+                content.innerHTML = modalContent;
+                modal.classList.remove('hidden');
+            }
+
+            static logAttendance(subjectId, date, status) {
+                const result = appState.logAttendance(subjectId, date, status);
+                
+                if (result.success) {
+                    DataManager.saveData();
+                    AppManager.updateAllViews();
+                    AppManager.showSnackbar(`Attendance logged: ${status}`, 'success');
+                    
+                    // Update modal content to reflect changes
+                    const selectedSubject = document.getElementById('weeklySubjectSelect')?.value || '';
+                    this.showModal(selectedSubject, date);
+                } else {
+                    AppManager.showSnackbar('Error logging attendance: ' + result.error, 'error');
+                }
+            }
+
+            static closeModal() {
+                document.getElementById('attendanceModal').classList.add('hidden');
+            }
+        }
+
+        // Data Manager
+        class DataManager {
+            static saveData() {
+                try {
+                    appState.updateMetadata();
+                    localStorage.setItem('attendanceAppData', JSON.stringify(appState.data));
+                    AppManager.updateStorageInfo();
+                    return true;
+                } catch (error) {
+                    console.error('Error saving data:', error);
+                    AppManager.showSnackbar('Error saving data: ' + error.message, 'error');
+                    return false;
+                }
+            }
+
+            static exportData(format) {
+                AppManager.updateSyncStatus('syncing', 'Exporting data...');
+                
+                setTimeout(() => {
+                    try {
+                        if (format === 'json') {
+                            this.exportJSON();
+                        } else if (format === 'csv') {
+                            this.exportCSV();
+                        }
+                        AppManager.updateSyncStatus('synced', 'Export complete');
+                    } catch (error) {
+                        AppManager.updateSyncStatus('error', 'Export failed');
+                        AppManager.showSnackbar('Export failed: ' + error.message, 'error');
+                    }
+                }, 500);
+            }
+
+            static exportJSON() {
+                const dataStr = JSON.stringify(appState.data, null, 2);
+                const dataBlob = new Blob([dataStr], { type: 'application/json' });
+                
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(dataBlob);
+                link.download = `attendance-data-v7-${new Date().toISOString().split('T')[0]}.json`;
+                link.click();
+                
+                AppManager.showSnackbar('Data exported successfully!', 'success');
+            }
+
+            static exportCSV() {
+                const csvContent = AnalyticsManager.generateCSVReport();
+                const dataBlob = new Blob([csvContent], { type: 'text/csv' });
+                
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(dataBlob);
+                link.download = `attendance-data-v7-${new Date().toISOString().split('T')[0]}.csv`;
+                link.click();
+                
+                AppManager.showSnackbar('CSV exported successfully!', 'success');
+            }
+
+            static importData() {
+                const fileInput = document.getElementById('importFile');
+                const file = fileInput.files[0];
+                
+                if (!file) {
+                    AppManager.showSnackbar('Please select a file first.', 'warning');
+                    return;
+                }
+
+                AppManager.updateSyncStatus('syncing', 'Importing data...');
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        let importedData;
+                        
+                        if (file.name.endsWith('.json')) {
+                            importedData = JSON.parse(e.target.result);
+                        } else if (file.name.endsWith('.csv')) {
+                            importedData = this.parseCSV(e.target.result);
+                        } else {
+                            throw new Error('Unsupported file format');
+                        }
+                        
+                        if (confirm('This will replace all your current data. Continue?')) {
+                            // Validate imported data structure
+                            if (!this.validateImportedData(importedData)) {
+                                throw new Error('Invalid data format');
+                            }
+                            
+                            appState.data = importedData;
+                            this.saveData();
+                            AppManager.updateAllViews();
+                            AppManager.updateSyncStatus('synced', 'Import complete');
+                            AppManager.showSnackbar('Data imported successfully!', 'success');
+                        } else {
+                            AppManager.updateSyncStatus('error', 'Import cancelled');
+                        }
+                    } catch (error) {
+                        AppManager.updateSyncStatus('error', 'Import failed');
+                        AppManager.showSnackbar('Import failed: ' + error.message, 'error');
+                    }
+                };
+                reader.readAsText(file);
+            }
+
+            static parseCSV(csvText) {
+                // Basic CSV parsing for attendance data
+                const lines = csvText.split('\n');
+                const headers = lines[0].split(',');
+                
+                if (!headers.includes('Date') || !headers.includes('Subject') || !headers.includes('Status')) {
+                    throw new Error('CSV must contain Date, Subject, and Status columns');
+                }
+                
+                const subjects = new Map();
+                const attendance = {};
+                
+                for (let i = 1; i < lines.length; i++) {
+                    const values = lines[i].split(',');
+                    if (values.length < 3) continue;
+                    
+                    const date = values[0].trim();
+                    const subjectName = values[1].replace(/"/g, '').trim();
+                    const status = values[2].trim();
+                    
+                    if (!subjects.has(subjectName)) {
+                        subjects.set(subjectName, {
+                            id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+                            name: subjectName,
+                            professor: '',
+                            targetAttendance: 75,
+                            color: '#1976D2',
+                            createdAt: new Date().toISOString()
+                        });
+                    }
+                    
+                    const subject = subjects.get(subjectName);
+                    
+                    if (!attendance[date]) {
+                        attendance[date] = {};
+                    }
+                    
+                    attendance[date][subject.id] = status;
+                }
+                
+                return {
+                    subjects: Array.from(subjects.values()),
+                    attendance: attendance,
+                    settings: appState.data.settings,
+                    metadata: {
+                        created: new Date().toISOString(),
+                        lastModified: new Date().toISOString(),
+                        backupCount: 0
+                    }
+                };
+            }
+
+            static validateImportedData(data) {
+                return data && 
+                       Array.isArray(data.subjects) && 
+                       typeof data.attendance === 'object' &&
+                       typeof data<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'98246d1f629d21f5',t:'MTc1ODQwMzg1MC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script>
